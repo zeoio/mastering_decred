@@ -44,10 +44,6 @@ func dcrdMain() error {
 	ctx := shutdownListener()
 	defer dcrdLog.Info("Shutdown complete")
 
-	if cfg.NoFileLogging {
-		dcrdLog.Info("File logging disabled")
-	}
-
 	if cfg.LifetimeEvents {
 		lifetimeNotifier = newLifetimeEventServer(outgoingPipeMessages)
 	}
