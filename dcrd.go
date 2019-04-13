@@ -1,8 +1,3 @@
-// Copyright (c) 2013-2016 The btcsuite developers
-// Copyright (c) 2015-2016 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package main
 
 import (
@@ -20,10 +15,6 @@ import (
 )
 
 var cfg *config
-
-// winServiceMain is only invoked on Windows.  It detects when dcrd is running
-// as a service and reacts accordingly.
-var winServiceMain func() (bool, error)
 
 // serviceStartOfDayChan is only used by Windows when the code is running as a
 // service.  It signals the service code that startup has completed.  Notice
@@ -53,54 +44,10 @@ func dcrdMain() error {
 	ctx := shutdownListener()
 	defer dcrdLog.Info("Shutdown complete")
 
-	// Show version and home dir at startup.
-	dcrdLog.Infof("Version %s (Go version %s %s/%s)", version.String(),
-		runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	dcrdLog.Infof("Home dir: %s", cfg.HomeDir)
 	if cfg.NoFileLogging {
 		dcrdLog.Info("File logging disabled")
 	}
 
-	// Enable http profiling server if requested.
-	if cfg.Profile != "" {
-		go func() {
-			listenAddr := cfg.Profile
-			dcrdLog.Infof("Creating profiling server "+
-				"listening on %s", listenAddr)
-			profileRedirect := http.RedirectHandler("/debug/pprof",
-				http.StatusSeeOther)
-			http.Handle("/", profileRedirect)
-			err := http.ListenAndServe(listenAddr, nil)
-			if err != nil {
-				fatalf(err.Error())
-			}
-		}()
-	}
-
-	// Write cpu profile if requested.
-	if cfg.CPUProfile != "" {
-		f, err := os.Create(cfg.CPUProfile)
-		if err != nil {
-			dcrdLog.Errorf("Unable to create cpu profile: %v", err.Error())
-			return err
-		}
-		pprof.StartCPUProfile(f)
-		defer f.Close()
-		defer pprof.StopCPUProfile()
-	}
-
-	// Write mem profile if requested.
-	if cfg.MemProfile != "" {
-		f, err := os.Create(cfg.MemProfile)
-		if err != nil {
-			dcrdLog.Errorf("Unable to create mem profile: %v", err)
-			return err
-		}
-		defer f.Close()
-		defer pprof.WriteHeapProfile(f)
-	}
-
-	var lifetimeNotifier lifetimeEventServer
 	if cfg.LifetimeEvents {
 		lifetimeNotifier = newLifetimeEventServer(outgoingPipeMessages)
 	}
@@ -120,7 +67,6 @@ func dcrdMain() error {
 	}
 
 	// Load the block database.
-	lifetimeNotifier.notifyStartupEvent(lifetimeEventDBOpen)
 	db, err := loadBlockDB()
 	if err != nil {
 		dcrdLog.Errorf("%v", err)
@@ -128,7 +74,6 @@ func dcrdMain() error {
 	}
 	defer func() {
 		// Ensure the database is sync'd and closed on shutdown.
-		lifetimeNotifier.notifyShutdownEvent(lifetimeEventDBOpen)
 		dcrdLog.Infof("Gracefully shutting down the database...")
 		db.Close()
 	}()
@@ -225,20 +170,6 @@ func main() {
 	if err := limits.SetLimits(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to set limits: %v\n", err)
 		os.Exit(1)
-	}
-
-	// Call serviceMain on Windows to handle running as a service.  When
-	// the return isService flag is true, exit now since we ran as a
-	// service.  Otherwise, just fall through to normal operation.
-	if runtime.GOOS == "windows" {
-		isService, err := winServiceMain()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if isService {
-			os.Exit(0)
-		}
 	}
 
 	// Work around defer not working after os.Exit()
