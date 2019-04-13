@@ -93,8 +93,6 @@ type config struct {
 	DataDir              string        `short:"b" long:"datadir" description:"Directory to store data"`
 	LogDir               string        `long:"logdir" description:"Directory to log output."`
 	NoFileLogging        bool          `long:"nofilelogging" description:"Disable file logging."`
-	AddPeers             []string      `short:"a" long:"addpeer" description:"Add a peer to connect with at startup"`
-	ConnectPeers         []string      `long:"connect" description:"Connect only to the specified peers at startup"`
 	DisableListen        bool          `long:"nolisten" description:"Disable listening for incoming connections -- NOTE: Listening is automatically disabled if the --connect or --proxy options are used without also specifying listen interfaces via --listen"`
 	Listeners            []string      `long:"listen" description:"Add an interface/port to listen for connections (default all interfaces port: 9108, testnet: 19108)"`
 	MaxSameIP            int           `long:"maxsameip" description:"Max number of connections with the same IP -- 0 to disable"`
@@ -102,11 +100,8 @@ type config struct {
 	DisableBanning       bool          `long:"nobanning" description:"Disable banning of misbehaving peers"`
 	BanDuration          time.Duration `long:"banduration" description:"How long to ban misbehaving peers.  Valid time units are {s, m, h}.  Minimum 1 second"`
 	BanThreshold         uint32        `long:"banthreshold" description:"Maximum allowed ban score before disconnecting and banning misbehaving peers."`
-	Whitelists           []string      `long:"whitelist" description:"Add an IP network or IP that will not be banned. (eg. 192.168.1.0/24 or ::1)"`
 	RPCUser              string        `short:"u" long:"rpcuser" description:"Username for RPC connections"`
 	RPCPass              string        `short:"P" long:"rpcpass" default-mask:"-" description:"Password for RPC connections"`
-	RPCLimitUser         string        `long:"rpclimituser" description:"Username for limited RPC connections"`
-	RPCLimitPass         string        `long:"rpclimitpass" default-mask:"-" description:"Password for limited RPC connections"`
 	RPCListeners         []string      `long:"rpclisten" description:"Add an interface/port to listen for RPC connections (default port: 9109, testnet: 19109)"`
 	RPCCert              string        `long:"rpccert" description:"File containing the certificate file"`
 	RPCKey               string        `long:"rpckey" description:"File containing the certificate key"`
@@ -117,17 +112,8 @@ type config struct {
 	DisableTLS           bool          `long:"notls" description:"Disable TLS for the RPC server -- NOTE: This is only allowed if the RPC server is bound to localhost"`
 	DisableDNSSeed       bool          `long:"nodnsseed" description:"Disable DNS seeding for peers"`
 	ExternalIPs          []string      `long:"externalip" description:"Add an ip to the list of local addresses we claim to listen on to peers"`
-	Proxy                string        `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
-	ProxyUser            string        `long:"proxyuser" description:"Username for proxy server"`
-	ProxyPass            string        `long:"proxypass" default-mask:"-" description:"Password for proxy server"`
-	OnionProxy           string        `long:"onion" description:"Connect to tor hidden services via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
-	OnionProxyUser       string        `long:"onionuser" description:"Username for onion proxy server"`
-	OnionProxyPass       string        `long:"onionpass" default-mask:"-" description:"Password for onion proxy server"`
-	NoOnion              bool          `long:"noonion" description:"Disable connecting to tor hidden services"`
 	TorIsolation         bool          `long:"torisolation" description:"Enable Tor stream isolation by randomizing user credentials for each connection."`
 	TestNet              bool          `long:"testnet" description:"Use the test network"`
-	SimNet               bool          `long:"simnet" description:"Use the simulation test network"`
-	RegNet               bool          `long:"regnet" description:"Use the regression test network"`
 	DisableCheckpoints   bool          `long:"nocheckpoints" description:"Disable built-in checkpoints.  Don't do this unless you know what you're doing."`
 	DbType               string        `long:"dbtype" description:"Database backend to use for the Block Chain"`
 	DumpBlockchain       string        `long:"dumpblockchain" description:"Write blockchain as a flat file of blocks for use with addblock, to the specified filename"`
@@ -232,77 +218,6 @@ func cleanAndExpandPath(path string) string {
 	}
 
 	return filepath.Join(homeDir, path)
-}
-
-// validLogLevel returns whether or not logLevel is a valid debug log level.
-func validLogLevel(logLevel string) bool {
-	_, ok := slog.LevelFromString(logLevel)
-	return ok
-}
-
-// supportedSubsystems returns a sorted slice of the supported subsystems for
-// logging purposes.
-func supportedSubsystems() []string {
-	// Convert the subsystemLoggers map keys to a slice.
-	subsystems := make([]string, 0, len(subsystemLoggers))
-	for subsysID := range subsystemLoggers {
-		subsystems = append(subsystems, subsysID)
-	}
-
-	// Sort the subsystems for stable display.
-	sort.Strings(subsystems)
-	return subsystems
-}
-
-// parseAndSetDebugLevels attempts to parse the specified debug level and set
-// the levels accordingly.  An appropriate error is returned if anything is
-// invalid.
-func parseAndSetDebugLevels(debugLevel string) error {
-	// When the specified string doesn't have any delimters, treat it as
-	// the log level for all subsystems.
-	if !strings.Contains(debugLevel, ",") && !strings.Contains(debugLevel, "=") {
-		// Validate debug log level.
-		if !validLogLevel(debugLevel) {
-			str := "the specified debug level [%v] is invalid"
-			return fmt.Errorf(str, debugLevel)
-		}
-
-		// Change the logging level for all subsystems.
-		setLogLevels(debugLevel)
-
-		return nil
-	}
-
-	// Split the specified string into subsystem/level pairs while detecting
-	// issues and update the log levels accordingly.
-	for _, logLevelPair := range strings.Split(debugLevel, ",") {
-		if !strings.Contains(logLevelPair, "=") {
-			str := "the specified debug level contains an invalid " +
-				"subsystem/level pair [%v]"
-			return fmt.Errorf(str, logLevelPair)
-		}
-
-		// Extract the specified subsystem and log level.
-		fields := strings.Split(logLevelPair, "=")
-		subsysID, logLevel := fields[0], fields[1]
-
-		// Validate subsystem.
-		if _, exists := subsystemLoggers[subsysID]; !exists {
-			str := "the specified subsystem [%v] is invalid -- " +
-				"supported subsytems %v"
-			return fmt.Errorf(str, subsysID, supportedSubsystems())
-		}
-
-		// Validate log level.
-		if !validLogLevel(logLevel) {
-			str := "the specified debug level [%v] is invalid"
-			return fmt.Errorf(str, logLevel)
-		}
-
-		setLogLevel(subsysID, logLevel)
-	}
-
-	return nil
 }
 
 // validDbType returns whether or not dbType is a supported database type.
@@ -529,7 +444,6 @@ func loadConfig() (*config, []string, error) {
 	// Show the version and exit if the version flag was specified.
 	appName := filepath.Base(os.Args[0])
 	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-	usageMessage := fmt.Sprintf("Use %s -h to show usage", appName)
 
 	// Perform service command and exit if specified.  Invalid service
 	// commands show an appropriate error.  Only runs on Windows since
@@ -544,9 +458,8 @@ func loadConfig() (*config, []string, error) {
 
 	// Create a default config file when one does not exist and the user did
 	// not specify an override.
-	if !(preCfg.SimNet || preCfg.RegNet) && preCfg.ConfigFile ==
-		defaultConfigFile && !fileExists(preCfg.ConfigFile) {
-
+	// 当用户没有指定配置文件的时候， 且配置文件不存在，就创建一个
+	if preCfg.ConfigFile == defaultConfigFile && !fileExists(preCfg.ConfigFile) {
 		err := createDefaultConfigFile(preCfg.ConfigFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating a default "+
@@ -554,37 +467,8 @@ func loadConfig() (*config, []string, error) {
 		}
 	}
 
-	// Load additional config from file.
-	var configFileError error
-	parser := newConfigParser(&cfg, &serviceOpts, flags.Default)
-	if !(cfg.SimNet || cfg.RegNet) || preCfg.ConfigFile != defaultConfigFile {
-		err := flags.NewIniParser(parser).ParseFile(preCfg.ConfigFile)
-		if err != nil {
-			if _, ok := err.(*os.PathError); !ok {
-				fmt.Fprintf(os.Stderr, "Error parsing config "+
-					"file: %v\n", err)
-				fmt.Fprintln(os.Stderr, usageMessage)
-				return nil, nil, err
-			}
-			configFileError = err
-		}
-	}
-
-	// Don't add peers from the config file when in regression test mode.
-	if preCfg.RegNet && len(cfg.AddPeers) > 0 {
-		cfg.AddPeers = nil
-	}
-
-	// Parse command line options again to ensure they take precedence.
-	remainingArgs, err := parser.Parse()
-	if err != nil {
-		if e, ok := err.(*flags.Error); !ok || e.Type != flags.ErrHelp {
-			fmt.Fprintln(os.Stderr, usageMessage)
-		}
-		return nil, nil, err
-	}
-
 	// Create the home directory if it doesn't already exist.
+	// 创建home目录， 当它不存在的时候
 	funcName := "loadConfig"
 	err = os.MkdirAll(cfg.HomeDir, 0700)
 	if err != nil {
@@ -600,33 +484,6 @@ func loadConfig() (*config, []string, error) {
 
 		str := "%s: failed to create home directory: %v"
 		err := fmt.Errorf(str, funcName, err)
-		fmt.Fprintln(os.Stderr, err)
-		return nil, nil, err
-	}
-
-	// Multiple networks can't be selected simultaneously.  Count number of
-	// network flags passed and assign active network params.
-	numNets := 0
-	if cfg.TestNet {
-		numNets++
-		activeNetParams = &testNet3Params
-	}
-	if cfg.SimNet {
-		numNets++
-		// Also disable dns seeding on the simulation test network.
-		activeNetParams = &simNetParams
-		cfg.DisableDNSSeed = true
-	}
-	if cfg.RegNet {
-		numNets++
-		activeNetParams = &regNetParams
-	}
-	if numNets > 1 {
-		str := "%s: the testnet, regnet, and simnet params can't be " +
-			"used together -- choose one of the three"
-		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
@@ -634,21 +491,8 @@ func loadConfig() (*config, []string, error) {
 	// according to the default of the active network. The set
 	// configuration value takes precedence over the default value for the
 	// selected network.
-	acceptNonStd := activeNetParams.AcceptNonStdTxs
-	switch {
-	case cfg.AcceptNonStd && cfg.RejectNonStd:
-		str := "%s: rejectnonstd and acceptnonstd cannot be used " +
-			"together -- choose only one"
-		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	case cfg.RejectNonStd:
-		acceptNonStd = false
-	case cfg.AcceptNonStd:
-		acceptNonStd = true
-	}
-	cfg.AcceptNonStd = acceptNonStd
+	// 默认拒绝非标准的交易
+	cfg.AcceptNonStd = activeNetParams.AcceptNonStdTxs
 
 	// Append the network type to the data directory so it is "namespaced"
 	// per network.  In addition to the block database, there are other
@@ -660,43 +504,13 @@ func loadConfig() (*config, []string, error) {
 	// Make list of old versions of testnet directories here since the
 	// network specific DataDir will be used after this.
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
-	var oldTestNets []string
-	oldTestNets = append(oldTestNets, filepath.Join(cfg.DataDir, "testnet"))
-	oldTestNets = append(oldTestNets, filepath.Join(cfg.DataDir, "testnet2"))
 	cfg.DataDir = filepath.Join(cfg.DataDir, activeNetParams.Name)
-	logRotator = nil
-	if !cfg.NoFileLogging {
-		// Append the network type to the log directory so it is "namespaced"
-		// per network in the same fashion as the data directory.
-		cfg.LogDir = cleanAndExpandPath(cfg.LogDir)
-		cfg.LogDir = filepath.Join(cfg.LogDir, activeNetParams.Name)
-
-		// Initialize log rotation.  After log rotation has been initialized, the
-		// logger variables may be used.
-		initLogRotator(filepath.Join(cfg.LogDir, defaultLogFilename))
-	}
-
-	// Special show command to list supported subsystems and exit.
-	if cfg.DebugLevel == "show" {
-		fmt.Println("Supported subsystems", supportedSubsystems())
-		os.Exit(0)
-	}
-
-	// Parse, validate, and set debug log level(s).
-	if err := parseAndSetDebugLevels(cfg.DebugLevel); err != nil {
-		err := fmt.Errorf("%s: %v", funcName, err.Error())
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
 
 	// Validate database type.
 	if !validDbType(cfg.DbType) {
 		str := "%s: the specified database type [%v] is invalid -- " +
 			"supported types %v"
 		err := fmt.Errorf(str, funcName, cfg.DbType, knownDbTypes)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
@@ -704,96 +518,22 @@ func loadConfig() (*config, []string, error) {
 	if cfg.BanDuration < time.Second {
 		str := "%s: the banduration option may not be less than 1s -- parsed [%v]"
 		err := fmt.Errorf(str, funcName, cfg.BanDuration)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
-	}
-
-	// Validate any given whitelisted IP addresses and networks.
-	if len(cfg.Whitelists) > 0 {
-		var ip net.IP
-		cfg.whitelists = make([]*net.IPNet, 0, len(cfg.Whitelists))
-
-		for _, addr := range cfg.Whitelists {
-			_, ipnet, err := net.ParseCIDR(addr)
-			if err != nil {
-				ip = net.ParseIP(addr)
-				if ip == nil {
-					str := "%s: the whitelist value of '%s' is invalid"
-					err = fmt.Errorf(str, funcName, addr)
-					fmt.Fprintln(os.Stderr, err)
-					fmt.Fprintln(os.Stderr, usageMessage)
-					return nil, nil, err
-				}
-				var bits int
-				if ip.To4() == nil {
-					// IPv6
-					bits = 128
-				} else {
-					bits = 32
-				}
-				ipnet = &net.IPNet{
-					IP:   ip,
-					Mask: net.CIDRMask(bits, bits),
-				}
-			}
-			cfg.whitelists = append(cfg.whitelists, ipnet)
-		}
-	}
-
-	// --addPeer and --connect do not mix.
-	if len(cfg.AddPeers) > 0 && len(cfg.ConnectPeers) > 0 {
-		str := "%s: the --addpeer and --connect options can not be " +
-			"mixed"
-		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
-	// --proxy or --connect without --listen disables listening.
-	if (cfg.Proxy != "" || len(cfg.ConnectPeers) > 0) &&
-		len(cfg.Listeners) == 0 {
-		cfg.DisableListen = true
-	}
-
-	// Connect means no DNS seeding.
-	if len(cfg.ConnectPeers) > 0 {
-		cfg.DisableDNSSeed = true
 	}
 
 	// Add the default listener if none were specified. The default
 	// listener is all addresses on the listen port for the network
 	// we are to connect to.
+	// 如果没有指定，添加默认的监听者
 	if len(cfg.Listeners) == 0 {
 		cfg.Listeners = []string{
 			net.JoinHostPort("", activeNetParams.DefaultPort),
 		}
 	}
 
-	// Check to make sure limited and admin users don't have the same username
-	if cfg.RPCUser == cfg.RPCLimitUser && cfg.RPCUser != "" {
-		str := "%s: --rpcuser and --rpclimituser must not specify the " +
-			"same username"
-		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
-	// Check to make sure limited and admin users don't have the same password
-	if cfg.RPCPass == cfg.RPCLimitPass && cfg.RPCPass != "" {
-		str := "%s: --rpcpass and --rpclimitpass must not specify the " +
-			"same password"
-		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
 	// The RPC server is disabled if no username or password is provided.
-	if (cfg.RPCUser == "" || cfg.RPCPass == "") &&
-		(cfg.RPCLimitUser == "" || cfg.RPCLimitPass == "") {
+	// 如果RPC没有用户或者密码被指定，则RPC服务器被禁止
+	if cfg.RPCUser == "" || cfg.RPCPass == "" {
 		cfg.DisableRPC = true
 	}
 
@@ -814,8 +554,6 @@ func loadConfig() (*config, []string, error) {
 		str := "%s: the rpcmaxwebsocketconcurrentrequests option may " +
 			"not be less than 0 -- parsed [%d]"
 		err := fmt.Errorf(str, funcName, cfg.RPCMaxConcurrentReqs)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
@@ -824,23 +562,17 @@ func loadConfig() (*config, []string, error) {
 	if err != nil {
 		str := "%s: invalid minrelaytxfee: %v"
 		err := fmt.Errorf(str, funcName, err)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
 	// Ensure the specified max block size is not larger than the network will
 	// allow.  1000 bytes is subtracted from the max to account for overhead.
 	blockMaxSizeMax := uint32(activeNetParams.MaximumBlockSizes[0]) - 1000
-	if cfg.BlockMaxSize < blockMaxSizeMin || cfg.BlockMaxSize >
-		blockMaxSizeMax {
-
+	if cfg.BlockMaxSize < blockMaxSizeMin || cfg.BlockMaxSize > blockMaxSizeMax {
 		str := "%s: the blockmaxsize option must be in between %d " +
 			"and %d -- parsed [%d]"
 		err := fmt.Errorf(str, funcName, blockMaxSizeMin,
 			blockMaxSizeMax, cfg.BlockMaxSize)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
@@ -849,63 +581,12 @@ func loadConfig() (*config, []string, error) {
 		str := "%s: the maxorphantx option may not be less than 0 " +
 			"-- parsed [%d]"
 		err := fmt.Errorf(str, funcName, cfg.MaxOrphanTxs)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
 	// Limit the block priority and minimum block sizes to max block size.
 	cfg.BlockPrioritySize = minUint32(cfg.BlockPrioritySize, cfg.BlockMaxSize)
 	cfg.BlockMinSize = minUint32(cfg.BlockMinSize, cfg.BlockMaxSize)
-
-	// --txindex and --droptxindex do not mix.
-	if cfg.TxIndex && cfg.DropTxIndex {
-		err := fmt.Errorf("%s: the --txindex and --droptxindex "+
-			"options may  not be activated at the same time",
-			funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
-	// --addrindex and --dropaddrindex do not mix.
-	if cfg.AddrIndex && cfg.DropAddrIndex {
-		err := fmt.Errorf("%s: the --addrindex and --dropaddrindex "+
-			"options may not be activated at the same time",
-			funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
-	// --addrindex and --droptxindex do not mix.
-	if cfg.AddrIndex && cfg.DropTxIndex {
-		err := fmt.Errorf("%s: the --addrindex and --droptxindex "+
-			"options may not be activated at the same time "+
-			"because the address index relies on the transaction "+
-			"index",
-			funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
-	// !--noexistsaddrindex and --dropexistsaddrindex do not mix.
-	if !cfg.NoExistsAddrIndex && cfg.DropExistsAddrIndex {
-		err := fmt.Errorf("dropexistsaddrindex cannot be activated when " +
-			"existsaddressindex is on (try setting --noexistsaddrindex)")
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
-
-	// !--nocfilters and --dropcfindex do not mix.
-	if !cfg.NoCFilters && cfg.DropCFIndex {
-		err := errors.New("dropcfindex cannot be actived without nocfilters")
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
-		return nil, nil, err
-	}
 
 	// Check mining addresses are valid and saved parsed versions.
 	cfg.miningAddrs = make([]dcrutil.Address, 0, len(cfg.MiningAddrs))
@@ -914,15 +595,11 @@ func loadConfig() (*config, []string, error) {
 		if err != nil {
 			str := "%s: mining address '%s' failed to decode: %v"
 			err := fmt.Errorf(str, funcName, strAddr, err)
-			fmt.Fprintln(os.Stderr, err)
-			fmt.Fprintln(os.Stderr, usageMessage)
 			return nil, nil, err
 		}
 		if !addr.IsForNet(activeNetParams.Params) {
 			str := "%s: mining address '%s' is on the wrong network"
 			err := fmt.Errorf(str, funcName, strAddr)
-			fmt.Fprintln(os.Stderr, err)
-			fmt.Fprintln(os.Stderr, usageMessage)
 			return nil, nil, err
 		}
 		cfg.miningAddrs = append(cfg.miningAddrs, addr)
@@ -934,8 +611,6 @@ func loadConfig() (*config, []string, error) {
 		str := "%s: the generate flag is set, but there are no mining " +
 			"addresses specified "
 		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
@@ -963,8 +638,6 @@ func loadConfig() (*config, []string, error) {
 				str := "%s: RPC listen interface '%s' is " +
 					"invalid: %v"
 				err := fmt.Errorf(str, funcName, addr, err)
-				fmt.Fprintln(os.Stderr, err)
-				fmt.Fprintln(os.Stderr, usageMessage)
 				return nil, nil, err
 			}
 			if _, ok := allowedTLSListeners[host]; !ok {
@@ -972,8 +645,6 @@ func loadConfig() (*config, []string, error) {
 					"when binding RPC to non localhost " +
 					"addresses: %s"
 				err := fmt.Errorf(str, funcName, addr)
-				fmt.Fprintln(os.Stderr, err)
-				fmt.Fprintln(os.Stderr, usageMessage)
 				return nil, nil, err
 			}
 		}
@@ -991,8 +662,6 @@ func loadConfig() (*config, []string, error) {
 		str := "%s: Tor stream isolation requires either proxy or " +
 			"onionproxy to be set"
 		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
 	}
 
@@ -1004,97 +673,6 @@ func loadConfig() (*config, []string, error) {
 	// specified in which case the system DNS resolver is used).
 	cfg.dial = net.Dial
 	cfg.lookup = net.LookupIP
-	if cfg.Proxy != "" {
-		_, _, err := net.SplitHostPort(cfg.Proxy)
-		if err != nil {
-			str := "%s: proxy address '%s' is invalid: %v"
-			err := fmt.Errorf(str, funcName, cfg.Proxy, err)
-			fmt.Fprintln(os.Stderr, err)
-			fmt.Fprintln(os.Stderr, usageMessage)
-			return nil, nil, err
-		}
-
-		if cfg.TorIsolation &&
-			(cfg.ProxyUser != "" || cfg.ProxyPass != "") {
-			fmt.Fprintln(os.Stderr, "Tor isolation set -- "+
-				"overriding specified proxy user credentials")
-		}
-
-		proxy := &socks.Proxy{
-			Addr:         cfg.Proxy,
-			Username:     cfg.ProxyUser,
-			Password:     cfg.ProxyPass,
-			TorIsolation: cfg.TorIsolation,
-		}
-		cfg.dial = proxy.Dial
-		if !cfg.NoOnion {
-			cfg.lookup = func(host string) ([]net.IP, error) {
-				return connmgr.TorLookupIP(host, cfg.Proxy)
-			}
-		}
-	}
-
-	// Setup onion address dial and DNS resolution (lookup) functions
-	// depending on the specified options.  The default is to use the
-	// same dial and lookup functions selected above.  However, when an
-	// onion-specific proxy is specified, the onion address dial and
-	// lookup functions are set to use the onion-specific proxy while
-	// leaving the normal dial and lookup functions as selected above.
-	// This allows .onion address traffic to be routed through a different
-	// proxy than normal traffic.
-	if cfg.OnionProxy != "" {
-		_, _, err := net.SplitHostPort(cfg.OnionProxy)
-		if err != nil {
-			str := "%s: Onion proxy address '%s' is invalid: %v"
-			err := fmt.Errorf(str, funcName, cfg.OnionProxy, err)
-			fmt.Fprintln(os.Stderr, err)
-			fmt.Fprintln(os.Stderr, usageMessage)
-			return nil, nil, err
-		}
-
-		if cfg.TorIsolation &&
-			(cfg.OnionProxyUser != "" || cfg.OnionProxyPass != "") {
-			fmt.Fprintln(os.Stderr, "Tor isolation set -- "+
-				"overriding specified onionproxy user "+
-				"credentials ")
-		}
-
-		cfg.oniondial = func(a, b string) (net.Conn, error) {
-			proxy := &socks.Proxy{
-				Addr:         cfg.OnionProxy,
-				Username:     cfg.OnionProxyUser,
-				Password:     cfg.OnionProxyPass,
-				TorIsolation: cfg.TorIsolation,
-			}
-			return proxy.Dial(a, b)
-		}
-		cfg.onionlookup = func(host string) ([]net.IP, error) {
-			return connmgr.TorLookupIP(host, cfg.OnionProxy)
-		}
-	} else {
-		cfg.oniondial = cfg.dial
-		cfg.onionlookup = cfg.lookup
-	}
-
-	// Specifying --noonion means the onion address dial and DNS resolution
-	// (lookup) functions result in an error.
-	if cfg.NoOnion {
-		cfg.oniondial = func(a, b string) (net.Conn, error) {
-			return nil, errors.New("tor has been disabled")
-		}
-		cfg.onionlookup = func(a string) ([]net.IP, error) {
-			return nil, errors.New("tor has been disabled")
-		}
-	}
-
-	// Warn if old testnet directory is present.
-	for _, oldDir := range oldTestNets {
-		if fileExists(oldDir) {
-			dcrdLog.Warnf("Block chain data from previous testnet"+
-				" found (%v) and can probably be removed.",
-				oldDir)
-		}
-	}
 
 	// Parse information regarding the state of the supported network
 	// interfaces.

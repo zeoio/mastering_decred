@@ -45,10 +45,6 @@ var (
 	// or data races and/or nil pointer dereferences will occur.
 	backendLog = slog.NewBackend(logWriter{})
 
-	// logRotator is one of the logging outputs.  It should be closed on
-	// application shutdown.
-	logRotator *rotator.Rotator
-
 	adxrLog = backendLog.Logger("ADXR")
 	amgrLog = backendLog.Logger("AMGR")
 	bcdbLog = backendLog.Logger("BCDB")
@@ -82,46 +78,6 @@ func init() {
 	txscript.UseLogger(scrpLog)
 }
 
-// subsystemLoggers maps each subsystem identifier to its associated logger.
-var subsystemLoggers = map[string]slog.Logger{
-	"ADXR": adxrLog,
-	"AMGR": amgrLog,
-	"BCDB": bcdbLog,
-	"BMGR": bmgrLog,
-	"CHAN": chanLog,
-	"CMGR": cmgrLog,
-	"DCRD": dcrdLog,
-	"DISC": discLog,
-	"FEES": feesLog,
-	"INDX": indxLog,
-	"MINR": minrLog,
-	"PEER": peerLog,
-	"RPCS": rpcsLog,
-	"SCRP": scrpLog,
-	"SRVR": srvrLog,
-	"STKE": stkeLog,
-	"TXMP": txmpLog,
-}
-
-// initLogRotator initializes the logging rotater to write logs to logFile and
-// create roll files in the same directory.  It must be called before the
-// package-global log rotater variables are used.
-func initLogRotator(logFile string) {
-	logDir, _ := filepath.Split(logFile)
-	err := os.MkdirAll(logDir, 0700)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create log directory: %v\n", err)
-		os.Exit(1)
-	}
-	r, err := rotator.New(logFile, 10*1024, false, 3)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create file rotator: %v\n", err)
-		os.Exit(1)
-	}
-
-	logRotator = r
-}
-
 // setLogLevel sets the logging level for provided subsystem.  Invalid
 // subsystems are ignored.  Uninitialized subsystems are dynamically created as
 // needed.
@@ -135,17 +91,6 @@ func setLogLevel(subsystemID string, logLevel string) {
 	// Defaults to info if the log level is invalid.
 	level, _ := slog.LevelFromString(logLevel)
 	logger.SetLevel(level)
-}
-
-// setLogLevels sets the log level for all subsystem loggers to the passed
-// level.  It also dynamically creates the subsystem loggers as needed, so it
-// can be used to initialize the logging system.
-func setLogLevels(logLevel string) {
-	// Configure all sub-systems with the new logging level.  Dynamically
-	// create loggers as needed.
-	for subsystemID := range subsystemLoggers {
-		setLogLevel(subsystemID, logLevel)
-	}
 }
 
 // directionString is a helper function that returns a string that represents

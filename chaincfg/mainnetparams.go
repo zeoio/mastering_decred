@@ -203,6 +203,7 @@ var MainNetParams = Params{
 
 	// AcceptNonStdTxs is a mempool param to either accept and relay
 	// non standard txs to the network or reject them
+	// 是否接受和转发非标准的交易
 	AcceptNonStdTxs: false,
 
 	// Address encoding magics
