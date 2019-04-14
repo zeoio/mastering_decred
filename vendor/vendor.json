@@ -151,6 +151,30 @@
 			"path": "github.com/jrick/logrotate/rotator",
 			"revision": "a93b200c26cbae3bb09dd0dc2c7c7fe1468a034a",
 			"revisionTime": "2017-06-28T18:35:19Z"
+		},
+		{
+			"checksumSHA1": "GP0QdBhWPoH4hsHedU7935MjGWo=",
+			"path": "golang.org/x/crypto/ripemd160",
+			"revision": "e4dc69e5b2fd71dcaf8bd5d054eb936deb78d1fa",
+			"revisionTime": "2018-10-17T08:28:34Z"
+		},
+		{
+			"checksumSHA1": "BGm8lKZmvJbf/YOJLeL1rw2WVjA=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "e4dc69e5b2fd71dcaf8bd5d054eb936deb78d1fa",
+			"revisionTime": "2018-10-17T08:28:34Z"
+		},
+		{
+			"checksumSHA1": "igQSWuUMHLb7aOCp0wOKSH9ocQ4=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "b6889370fb1098ed892bd3400d189bb6a3355813",
+			"revisionTime": "2019-01-20T05:37:32Z"
+		},
+		{
+			"checksumSHA1": "Hu8GoQK1euwtE4UjrhXepmk2NM8=",
+			"path": "golang.org/x/sys/windows",
+			"revision": "b6889370fb1098ed892bd3400d189bb6a3355813",
+			"revisionTime": "2019-01-20T05:37:32Z"
 		}
 	],
 	"rootPath": "github.com/decred/dcrd"
