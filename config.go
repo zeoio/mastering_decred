@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -11,21 +10,15 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/btcsuite/go-socks/socks"
-	"github.com/decred/dcrd/connmgr"
 	"github.com/decred/dcrd/database"
 	_ "github.com/decred/dcrd/database/ffldb"
-	"github.com/decred/dcrd/dcrjson/v2"
+	"github.com/decred/dcrd/dcrjson"
 	"github.com/decred/dcrd/dcrutil"
-	"github.com/decred/dcrd/internal/version"
-	"github.com/decred/dcrd/mempool/v2"
+	"github.com/decred/dcrd/mempool"
 	"github.com/decred/dcrd/sampleconfig"
-	"github.com/decred/slog"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -170,6 +163,7 @@ type serviceOptions struct {
 // passed path, cleans the result, and returns it.
 func cleanAndExpandPath(path string) string {
 	// Nothing to do when no path is given.
+	// 如果path参数为空，则返回空字符串
 	if path == "" {
 		return path
 	}
@@ -395,13 +389,13 @@ func loadConfig() (*config, []string, error) {
 		BanThreshold:         defaultBanThreshold,
 		RPCMaxClients:        defaultMaxRPCClients,
 		RPCMaxWebsockets:     defaultMaxRPCWebsockets,
-		RPCMaxConcurrentReqs: defaultMaxRPCConcurrentReqs,
+		RPCMaxConcurrentReqs: defaultMaxRPCConcurrentReqs, // 20
 		DataDir:              defaultDataDir,
 		LogDir:               defaultLogDir,
 		DbType:               defaultDbType,
 		RPCKey:               defaultRPCKeyFile,
 		RPCCert:              defaultRPCCertFile,
-		MinRelayTxFee:        mempool.DefaultMinRelayTxFee.ToCoin(),
+		MinRelayTxFee:        mempool.DefaultMinRelayTxFee.ToCoin(), // 0.0001
 		FreeTxRelayLimit:     defaultFreeTxRelayLimit,
 		BlockMinSize:         defaultBlockMinSize,
 		BlockMaxSize:         defaultBlockMaxSize,
@@ -503,10 +497,12 @@ func loadConfig() (*config, []string, error) {
 	//
 	// Make list of old versions of testnet directories here since the
 	// network specific DataDir will be used after this.
+	// 设置主网的数据目录
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
 	cfg.DataDir = filepath.Join(cfg.DataDir, activeNetParams.Name)
 
 	// Validate database type.
+	// 检查数据库的类型是否支持
 	if !validDbType(cfg.DbType) {
 		str := "%s: the specified database type [%v] is invalid -- " +
 			"supported types %v"
@@ -524,10 +520,10 @@ func loadConfig() (*config, []string, error) {
 	// Add the default listener if none were specified. The default
 	// listener is all addresses on the listen port for the network
 	// we are to connect to.
-	// 如果没有指定，添加默认的监听者
+	// 如果没有指定监听者，则添加默认的监听者
 	if len(cfg.Listeners) == 0 {
 		cfg.Listeners = []string{
-			net.JoinHostPort("", activeNetParams.DefaultPort),
+			net.JoinHostPort("", activeNetParams.DefaultPort), // 默认端口9108
 		}
 	}
 
@@ -538,6 +534,7 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Default RPC to listen on localhost only.
+	// 如果RPC没有禁止, 并且没有指定监听者，则添加本地地址作为监听地址
 	if !cfg.DisableRPC && len(cfg.RPCListeners) == 0 {
 		addrs, err := net.LookupHost("localhost")
 		if err != nil {
@@ -545,19 +542,13 @@ func loadConfig() (*config, []string, error) {
 		}
 		cfg.RPCListeners = make([]string, 0, len(addrs))
 		for _, addr := range addrs {
-			addr = net.JoinHostPort(addr, activeNetParams.rpcPort)
+			addr = net.JoinHostPort(addr, activeNetParams.rpcPort) // rpc端口9109
 			cfg.RPCListeners = append(cfg.RPCListeners, addr)
 		}
 	}
 
-	if cfg.RPCMaxConcurrentReqs < 0 {
-		str := "%s: the rpcmaxwebsocketconcurrentrequests option may " +
-			"not be less than 0 -- parsed [%d]"
-		err := fmt.Errorf(str, funcName, cfg.RPCMaxConcurrentReqs)
-		return nil, nil, err
-	}
-
-	// Validate the the minrelaytxfee.
+	// Validate the minrelaytxfee.
+	// 验证最小的交易转发费率
 	cfg.minRelayTxFee, err = dcrutil.NewAmount(cfg.MinRelayTxFee)
 	if err != nil {
 		str := "%s: invalid minrelaytxfee: %v"
