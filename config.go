@@ -105,7 +105,6 @@ type config struct {
 	DisableTLS           bool          `long:"notls" description:"Disable TLS for the RPC server -- NOTE: This is only allowed if the RPC server is bound to localhost"`
 	DisableDNSSeed       bool          `long:"nodnsseed" description:"Disable DNS seeding for peers"`
 	ExternalIPs          []string      `long:"externalip" description:"Add an ip to the list of local addresses we claim to listen on to peers"`
-	TorIsolation         bool          `long:"torisolation" description:"Enable Tor stream isolation by randomizing user credentials for each connection."`
 	TestNet              bool          `long:"testnet" description:"Use the test network"`
 	DisableCheckpoints   bool          `long:"nocheckpoints" description:"Disable built-in checkpoints.  Don't do this unless you know what you're doing."`
 	DbType               string        `long:"dbtype" description:"Database backend to use for the Block Chain"`
@@ -150,7 +149,6 @@ type config struct {
 	whitelists           []*net.IPNet
 	ipv4NetInfo          dcrjson.NetworksResult
 	ipv6NetInfo          dcrjson.NetworksResult
-	onionNetInfo         dcrjson.NetworksResult
 }
 
 // serviceOptions defines the configuration options for the daemon as a service on
@@ -227,6 +225,7 @@ func validDbType(dbType string) bool {
 
 // removeDuplicateAddresses returns a new slice with all duplicate entries in
 // addrs removed.
+// 删除所有重复的地址
 func removeDuplicateAddresses(addrs []string) []string {
 	result := make([]string, 0, len(addrs))
 	seen := map[string]struct{}{}
@@ -241,6 +240,7 @@ func removeDuplicateAddresses(addrs []string) []string {
 
 // normalizeAddress returns addr with the passed default port appended if
 // there is not already a port specified.
+// 添加给定的端口到指定的addr中
 func normalizeAddress(addr, defaultPort string) string {
 	_, _, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -251,6 +251,7 @@ func normalizeAddress(addr, defaultPort string) string {
 
 // normalizeAddresses returns a new slice with all the passed peer addresses
 // normalized with the given default port, and all duplicates removed.
+// 标准化地址， 添加传递过来的端口到每一个地址中， 和删除重复的地址
 func normalizeAddresses(addrs []string, defaultPort string) []string {
 	for i, addr := range addrs {
 		addrs[i] = normalizeAddress(addr, defaultPort)
@@ -328,6 +329,7 @@ func (cfg *config) generateNetworkInfo() []dcrjson.NetworksResult {
 
 // parseNetworkInterfaces updates all network interface states based on the
 // provided configuration.
+// 函数只是解析了监听者 ?
 func parseNetworkInterfaces(cfg *config) error {
 	v4Addrs, v6Addrs, _, err := parseListeners(cfg.Listeners)
 	if err != nil {
@@ -397,10 +399,10 @@ func loadConfig() (*config, []string, error) {
 		RPCCert:              defaultRPCCertFile,
 		MinRelayTxFee:        mempool.DefaultMinRelayTxFee.ToCoin(), // 0.0001
 		FreeTxRelayLimit:     defaultFreeTxRelayLimit,
-		BlockMinSize:         defaultBlockMinSize,
-		BlockMaxSize:         defaultBlockMaxSize,
-		BlockPrioritySize:    mempool.DefaultBlockPrioritySize,
-		MaxOrphanTxs:         defaultMaxOrphanTransactions,
+		BlockMinSize:         defaultBlockMinSize,              // 0
+		BlockMaxSize:         defaultBlockMaxSize,              // 375000
+		BlockPrioritySize:    mempool.DefaultBlockPrioritySize, // 20000
+		MaxOrphanTxs:         defaultMaxOrphanTransactions,     // 1000
 		SigCacheMaxSize:      defaultSigCacheMaxSize,
 		Generate:             defaultGenerate,
 		NoMiningStateSync:    defaultNoMiningStateSync,
@@ -412,7 +414,6 @@ func loadConfig() (*config, []string, error) {
 		AltDNSNames:          defaultAltDNSNames,
 		ipv4NetInfo:          dcrjson.NetworksResult{Name: "IPV4"},
 		ipv6NetInfo:          dcrjson.NetworksResult{Name: "IPV6"},
-		onionNetInfo:         dcrjson.NetworksResult{Name: "Onion"},
 	}
 
 	// Service options which are only added on Windows.
@@ -458,6 +459,21 @@ func loadConfig() (*config, []string, error) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating a default "+
 				"config file: %v\n", err)
+		}
+	}
+
+	// Load additional config from file.
+	// 解析配置文件
+	parser := newConfigParser(&cfg, &serviceOpts, flags.Default)
+	if preCfg.ConfigFile != defaultConfigFile { // 当配置文件不是默认的配置文件时
+		err := flags.NewIniParser(parser).ParseFile(preCfg.ConfigFile)
+		if err != nil {
+			if _, ok := err.(*os.PathError); !ok {
+				fmt.Fprintf(os.Stderr, "Error parsing config "+
+					"file: %v\n", err)
+				return nil, nil, err
+			}
+			dcrdLog.Warnf("%v", err)
 		}
 	}
 
@@ -558,7 +574,8 @@ func loadConfig() (*config, []string, error) {
 
 	// Ensure the specified max block size is not larger than the network will
 	// allow.  1000 bytes is subtracted from the max to account for overhead.
-	blockMaxSizeMax := uint32(activeNetParams.MaximumBlockSizes[0]) - 1000
+	// 检查配置文件的块的最大的大小是否在允许的范围内(1000 -- 392216)
+	blockMaxSizeMax := uint32(activeNetParams.MaximumBlockSizes[0]) - 1000 // 393216 - 1000 => 392216字节
 	if cfg.BlockMaxSize < blockMaxSizeMin || cfg.BlockMaxSize > blockMaxSizeMax {
 		str := "%s: the blockmaxsize option must be in between %d " +
 			"and %d -- parsed [%d]"
@@ -567,7 +584,8 @@ func loadConfig() (*config, []string, error) {
 		return nil, nil, err
 	}
 
-	// Limit the max orphan count to a sane vlue.
+	// Limit the max orphan count to a sane value.
+	// 检查最大的孤儿交易个数是否小于零
 	if cfg.MaxOrphanTxs < 0 {
 		str := "%s: the maxorphantx option may not be less than 0 " +
 			"-- parsed [%d]"
@@ -576,10 +594,12 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Limit the block priority and minimum block sizes to max block size.
-	cfg.BlockPrioritySize = minUint32(cfg.BlockPrioritySize, cfg.BlockMaxSize)
-	cfg.BlockMinSize = minUint32(cfg.BlockMinSize, cfg.BlockMaxSize)
+	// 限制块的优先级大小为20000, 块最小的大小为0
+	cfg.BlockPrioritySize = minUint32(cfg.BlockPrioritySize, cfg.BlockMaxSize) // 20000
+	cfg.BlockMinSize = minUint32(cfg.BlockMinSize, cfg.BlockMaxSize)           // 0
 
 	// Check mining addresses are valid and saved parsed versions.
+	// 检查挖矿地址是否有效
 	cfg.miningAddrs = make([]dcrutil.Address, 0, len(cfg.MiningAddrs))
 	for _, strAddr := range cfg.MiningAddrs {
 		addr, err := dcrutil.DecodeAddress(strAddr)
@@ -598,6 +618,7 @@ func loadConfig() (*config, []string, error) {
 
 	// Ensure there is at least one mining address when the generate flag is
 	// set.
+	// 当开启挖矿的时候，必须有一个挖矿地址
 	if cfg.Generate && len(cfg.MiningAddrs) == 0 {
 		str := "%s: the generate flag is set, but there are no mining " +
 			"addresses specified "
@@ -607,16 +628,17 @@ func loadConfig() (*config, []string, error) {
 
 	// Add default port to all listener addresses if needed and remove
 	// duplicate addresses.
-	cfg.Listeners = normalizeAddresses(cfg.Listeners,
-		activeNetParams.DefaultPort)
+	// 添加默认的端口到每一个非重复的地址中
+	cfg.Listeners = normalizeAddresses(cfg.Listeners, activeNetParams.DefaultPort) // 默认端口9108
 
 	// Add default port to all rpc listener addresses if needed and remove
 	// duplicate addresses.
-	cfg.RPCListeners = normalizeAddresses(cfg.RPCListeners,
-		activeNetParams.rpcPort)
+	// 添加默认的端口到每一个非重复的地址中
+	cfg.RPCListeners = normalizeAddresses(cfg.RPCListeners, activeNetParams.rpcPort) // 默认端口9109
 
 	// Only allow TLS to be disabled if the RPC is bound to localhost
 	// addresses.
+	// 如果没有禁止RPC, 但是禁止了TLS时，则只允许本地监听者
 	if !cfg.DisableRPC && cfg.DisableTLS {
 		allowedTLSListeners := map[string]struct{}{
 			"localhost": {},
@@ -643,18 +665,9 @@ func loadConfig() (*config, []string, error) {
 
 	// Add default port to all added peer addresses if needed and remove
 	// duplicate addresses.
-	cfg.AddPeers = normalizeAddresses(cfg.AddPeers,
-		activeNetParams.DefaultPort)
-	cfg.ConnectPeers = normalizeAddresses(cfg.ConnectPeers,
-		activeNetParams.DefaultPort)
-
-	// Tor stream isolation requires either proxy or onion proxy to be set.
-	if cfg.TorIsolation && cfg.Proxy == "" && cfg.OnionProxy == "" {
-		str := "%s: Tor stream isolation requires either proxy or " +
-			"onionproxy to be set"
-		err := fmt.Errorf(str, funcName)
-		return nil, nil, err
-	}
+	// 添加默认的端口到每一个非重复的地址中
+	cfg.AddPeers = normalizeAddresses(cfg.AddPeers, activeNetParams.DefaultPort) // 默认端口9108
+	cfg.ConnectPeers = normalizeAddresses(cfg.ConnectPeers, activeNetParams.DefaultPort)
 
 	// Setup dial and DNS resolution (lookup) functions depending on the
 	// specified options.  The default is to use the standard net.Dial
@@ -669,13 +682,6 @@ func loadConfig() (*config, []string, error) {
 	// interfaces.
 	if err := parseNetworkInterfaces(&cfg); err != nil {
 		return nil, nil, err
-	}
-
-	// Warn about missing config file only after all other configuration is
-	// done.  This prevents the warning on help messages and invalid
-	// options.  Note this should go directly before the return.
-	if configFileError != nil {
-		dcrdLog.Warnf("%v", configFileError)
 	}
 
 	return &cfg, remainingArgs, nil

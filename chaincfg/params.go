@@ -552,6 +552,7 @@ func Register(params *Params) error {
 
 // mustRegister performs the same function as Register except it panics if there
 // is an error.  This should only be called from package init functions.
+// 注册网络
 func mustRegister(params *Params) {
 	if err := Register(params); err != nil {
 		panic("failed to register network: " + err.Error())
@@ -688,8 +689,5 @@ func (p *Params) LatestCheckpointHeight() int64 {
 
 func init() {
 	// Register all default networks when the package is initialized.
-	mustRegister(&MainNetParams)
-	mustRegister(&TestNet3Params)
-	mustRegister(&SimNetParams)
-	mustRegister(&RegNetParams)
+	mustRegister(&MainNetParams) // 注册main网络
 }

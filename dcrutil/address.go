@@ -1,8 +1,3 @@
-// Copyright (c) 2013, 2014 The btcsuite developers
-// Copyright (c) 2015-2019 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package dcrutil
 
 import (
@@ -161,6 +156,7 @@ func NewAddressPubKey(decoded []byte, net *chaincfg.Params) (Address, error) {
 
 // DecodeAddress decodes the string encoding of an address and returns
 // the Address if addr is a valid encoding for a known address type
+// 解码地址
 func DecodeAddress(addr string) (Address, error) {
 	// Switch on decoded length to determine the type.
 	decoded, netID, err := base58.CheckDecode(addr)
@@ -168,8 +164,7 @@ func DecodeAddress(addr string) (Address, error) {
 		if err == base58.ErrChecksum {
 			return nil, ErrChecksumMismatch
 		}
-		return nil, fmt.Errorf("decoded address is of unknown format: %v",
-			err.Error())
+		return nil, fmt.Errorf("decoded address is of unknown format: %v", err.Error())
 	}
 
 	net, err := detectNetworkForAddress(addr)
@@ -200,6 +195,7 @@ func DecodeAddress(addr string) (Address, error) {
 
 // detectNetworkForAddress pops the first character from a string encoded
 // address and detects what network type it is for.
+// 根据addr的第一个字符来查找所对应的网络配置参数
 func detectNetworkForAddress(addr string) (*chaincfg.Params, error) {
 	if len(addr) < 1 {
 		return nil, fmt.Errorf("empty string given for network detection")
