@@ -1,8 +1,3 @@
-// Copyright (c) 2015-2016 The btcsuite developers
-// Copyright (c) 2016-2018 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package ffldb
 
 import (
@@ -72,8 +67,9 @@ func useLogger(logger slog.Logger) {
 
 func init() {
 	// Register the driver.
+	// 注册ffldb数据库
 	driver := database.Driver{
-		DbType:    dbType,
+		DbType:    dbType, // ffldb
 		Create:    createDBDriver,
 		Open:      openDBDriver,
 		UseLogger: useLogger,

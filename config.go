@@ -53,9 +53,9 @@ const (
 )
 
 var (
-	defaultHomeDir     = dcrutil.AppDataDir("dcrd", false)
-	defaultConfigFile  = filepath.Join(defaultHomeDir, defaultConfigFilename)
-	defaultDataDir     = filepath.Join(defaultHomeDir, defaultDataDirname)
+	defaultHomeDir     = dcrutil.AppDataDir("dcrd", false)                    // ~/.dcrd
+	defaultConfigFile  = filepath.Join(defaultHomeDir, defaultConfigFilename) // ~/.dcrd/dcrd.conf
+	defaultDataDir     = filepath.Join(defaultHomeDir, defaultDataDirname)    // ~/.dcrd/data
 	knownDbTypes       = database.SupportedDrivers()
 	defaultRPCKeyFile  = filepath.Join(defaultHomeDir, "rpc.key")
 	defaultRPCCertFile = filepath.Join(defaultHomeDir, "rpc.cert")
@@ -329,7 +329,6 @@ func (cfg *config) generateNetworkInfo() []dcrjson.NetworksResult {
 
 // parseNetworkInterfaces updates all network interface states based on the
 // provided configuration.
-// 函数只是解析了监听者 ?
 func parseNetworkInterfaces(cfg *config) error {
 	v4Addrs, v6Addrs, _, err := parseListeners(cfg.Listeners)
 	if err != nil {
@@ -382,7 +381,7 @@ func loadConfig() (*config, []string, error) {
 		RPCMaxConcurrentReqs: defaultMaxRPCConcurrentReqs, // 20
 		DataDir:              defaultDataDir,
 		LogDir:               defaultLogDir,
-		DbType:               defaultDbType,
+		DbType:               defaultDbType, // "ffldb"
 		RPCKey:               defaultRPCKeyFile,
 		RPCCert:              defaultRPCCertFile,
 		MinRelayTxFee:        mempool.DefaultMinRelayTxFee.ToCoin(), // 0.0001

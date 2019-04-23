@@ -1,8 +1,3 @@
-// Copyright (c) 2013-2016 The btcsuite developers
-// Copyright (c) 2015-2018 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package wire
 
 import (
@@ -107,30 +102,12 @@ type CurrencyNet uint32
 const (
 	// MainNet represents the main Decred network.
 	MainNet CurrencyNet = 0xd9b400f9
-
-	// RegNet represents the regression test network.
-	RegNet CurrencyNet = 0xdab500fa
-
-	// RegTest represents the regression test network.
-	//
-	// DEPRECATED.  This will be removed in the next major version bump.
-	// Use Regnet instead.
-	RegTest CurrencyNet = RegNet
-
-	// TestNet3 represents the 3rd test network.
-	TestNet3 CurrencyNet = 0xb194aa75
-
-	// SimNet represents the simulation test network.
-	SimNet CurrencyNet = 0x12141c16
 )
 
 // bnStrings is a map of Decred networks back to their constant names for
 // pretty printing.
 var bnStrings = map[CurrencyNet]string{
-	MainNet:  "MainNet",
-	TestNet3: "TestNet3",
-	RegNet:   "RegNet",
-	SimNet:   "SimNet",
+	MainNet: "MainNet",
 }
 
 // String returns the CurrencyNet in human-readable form.

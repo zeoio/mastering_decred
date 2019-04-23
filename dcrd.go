@@ -2,16 +2,13 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/debug"
-	"runtime/pprof"
 
 	"github.com/decred/dcrd/blockchain/indexers"
 	"github.com/decred/dcrd/internal/limits"
-	"github.com/decred/dcrd/internal/version"
 )
 
 var cfg *config
@@ -27,6 +24,7 @@ var serviceStartOfDayChan = make(chan *config, 1)
 func dcrdMain() error {
 	// Load configuration and parse command line.  This function also
 	// initializes logging and configures it accordingly.
+	// 加载配置文件和解析命令行参数
 	tcfg, _, err := loadConfig()
 	if err != nil {
 		return err
@@ -44,20 +42,8 @@ func dcrdMain() error {
 	ctx := shutdownListener()
 	defer dcrdLog.Info("Shutdown complete")
 
-	if cfg.LifetimeEvents {
-		lifetimeNotifier = newLifetimeEventServer(outgoingPipeMessages)
-	}
-
-	if cfg.PipeRx != 0 {
-		go serviceControlPipeRx(uintptr(cfg.PipeRx))
-	}
-	if cfg.PipeTx != 0 {
-		go serviceControlPipeTx(uintptr(cfg.PipeTx))
-	} else {
-		go drainOutgoingPipeMessages()
-	}
-
 	// Return now if a shutdown signal was triggered.
+	// 如果关闭，则直接返回
 	if shutdownRequested(ctx) {
 		return nil
 	}
