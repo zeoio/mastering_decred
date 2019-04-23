@@ -352,18 +352,6 @@ func parseNetworkInterfaces(cfg *config) error {
 		ipv6.Proxy = cfg.Proxy
 	}
 
-	// Set Onion interface state.
-	if len(v6Addrs) > 0 && (cfg.Proxy != "" || cfg.OnionProxy != "") {
-		onion := &cfg.onionNetInfo
-		onion.Reachable = !cfg.DisableListen && !cfg.NoOnion
-		onion.Limited = len(v4Addrs) == 0
-		onion.Proxy = cfg.Proxy
-		if cfg.OnionProxy != "" {
-			onion.Proxy = cfg.OnionProxy
-		}
-		onion.ProxyRandomizeCredentials = cfg.TorIsolation
-	}
-
 	return nil
 }
 
