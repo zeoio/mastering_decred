@@ -1,8 +1,3 @@
-// Copyright (c) 2015-2016 The btcsuite developers
-// Copyright (c) 2016 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package ffldb
 
 import (
@@ -2001,6 +1996,7 @@ func (db *db) Close() error {
 }
 
 // filesExists reports whether the named file or directory exists.
+// 查看name指定的文件是否存在
 func fileExists(name string) bool {
 	if _, err := os.Stat(name); err != nil {
 		if os.IsNotExist(err) {
@@ -2043,15 +2039,15 @@ func initDB(ldb *leveldb.DB) error {
 // is returned if the database doesn't exist and the create flag is not set.
 func openDB(dbPath string, network wire.CurrencyNet, create bool) (database.DB, error) {
 	// Error if the database doesn't exist and the create flag is not set.
-	metadataDbPath := filepath.Join(dbPath, metadataDbName)
+	metadataDbPath := filepath.Join(dbPath, metadataDbName) // ~/.dcrd/data/blocks_ffldb/metadata
 	dbExists := fileExists(metadataDbPath)
-	if !create && !dbExists {
+	if !create && !dbExists { // 当需要打开数据库时，但是数据库不存在
 		str := fmt.Sprintf("database %q does not exist", metadataDbPath)
 		return nil, makeDbErr(database.ErrDbDoesNotExist, str, nil)
 	}
 
 	// Ensure the full path to the database exists.
-	if !dbExists {
+	if !dbExists { // 如果数据库目录不存在
 		// The error can be ignored here since the call to
 		// leveldb.OpenFile will fail if the directory couldn't be
 		// created.
@@ -2059,8 +2055,9 @@ func openDB(dbPath string, network wire.CurrencyNet, create bool) (database.DB, 
 	}
 
 	// Open the metadata database (will create it if needed).
+	// 打开数据库
 	opts := opt.Options{
-		ErrorIfExist: create,
+		ErrorIfExist: create, // 当数据库存在的时候是否返回错误
 		Strict:       opt.DefaultStrict,
 		Compression:  opt.NoCompression,
 		Filter:       filter.NewBloomFilter(10),

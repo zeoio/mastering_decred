@@ -15,11 +15,11 @@ const (
 )
 
 // parseArgs parses the arguments from the database Open/Create methods.
+// 检查参数的个数，和参数的类型是否正确
 func parseArgs(funcName string, args ...interface{}) (string, wire.CurrencyNet, error) {
 	if len(args) != 2 {
 		return "", 0, fmt.Errorf("invalid arguments to %s.%s -- "+
-			"expected database path and block network", dbType,
-			funcName)
+			"expected database path and block network", dbType, funcName)
 	}
 
 	dbPath, ok := args[0].(string)
@@ -39,6 +39,7 @@ func parseArgs(funcName string, args ...interface{}) (string, wire.CurrencyNet, 
 
 // openDBDriver is the callback provided during driver registration that opens
 // an existing database for use.
+// 打开已经存在的数据库
 func openDBDriver(args ...interface{}) (database.DB, error) {
 	dbPath, network, err := parseArgs("Open", args...)
 	if err != nil {
@@ -75,7 +76,6 @@ func init() {
 		UseLogger: useLogger,
 	}
 	if err := database.RegisterDriver(driver); err != nil {
-		panic(fmt.Sprintf("Failed to regiser database driver '%s': %v",
-			dbType, err))
+		panic(fmt.Sprintf("Failed to regiser database driver '%s': %v", dbType, err))
 	}
 }

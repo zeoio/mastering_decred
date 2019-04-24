@@ -33,6 +33,7 @@ var drivers = make(map[string]*Driver)
 // RegisterDriver adds a backend database driver to available interfaces.
 // ErrDbTypeRegistered will be retruned if the database type for the driver has
 // already been registered.
+// 当这个数据库不存在的时候，注册这个数据库的驱动
 func RegisterDriver(driver Driver) error {
 	if _, exists := drivers[driver.DbType]; exists {
 		str := fmt.Sprintf("driver %q is already registered",
@@ -74,7 +75,9 @@ func Create(dbType string, args ...interface{}) (DB, error) {
 // driver for further details.
 //
 // ErrDbUnknownType will be returned if the the database type is not registered.
+// 打开指定类型的数据库
 func Open(dbType string, args ...interface{}) (DB, error) {
+	// 查找指定类型的数据库
 	drv, exists := drivers[dbType]
 	if !exists {
 		str := fmt.Sprintf("driver %q is not registered", dbType)

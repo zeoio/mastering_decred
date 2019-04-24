@@ -1,8 +1,3 @@
-// Copyright (c) 2015-2016 The btcsuite developers
-// Copyright (c) 2016-2019 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 // This file contains the implementation functions for reading, writing, and
 // otherwise working with the flat files that house the actual blocks.
 
@@ -735,8 +730,7 @@ func scanBlockFiles(dbPath string) (int, uint32) {
 		fileLen = uint32(st.Size())
 	}
 
-	log.Tracef("Scan found latest block file #%d with length %d", lastFile,
-		fileLen)
+	log.Tracef("Scan found latest block file #%d with length %d", lastFile, fileLen)
 	return lastFile, fileLen
 }
 
