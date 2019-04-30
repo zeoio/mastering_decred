@@ -635,8 +635,8 @@ func newDbCache(ldb *leveldb.DB, store *blockStore, maxSize uint64, flushInterva
 	return &dbCache{
 		ldb:           ldb,
 		store:         store,
-		maxSize:       maxSize,
-		flushInterval: time.Second * time.Duration(flushIntervalSecs),
+		maxSize:       maxSize,                                        // 100m
+		flushInterval: time.Second * time.Duration(flushIntervalSecs), // 300s
 		lastFlush:     time.Now(),
 		cachedKeys:    treap.NewImmutable(),
 		cachedRemove:  treap.NewImmutable(),

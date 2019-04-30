@@ -2072,8 +2072,9 @@ func openDB(dbPath string, network wire.CurrencyNet, create bool) (database.DB, 
 	// according to the data that is actually on disk.  Also create the
 	// database cache which wraps the underlying leveldb database to provide
 	// write caching.
+	// 得到最新的块存储，用最新的块文件和文件偏移
 	store := newBlockStore(dbPath, network)
-	cache := newDbCache(ldb, store, defaultCacheSize, defaultFlushSecs)
+	cache := newDbCache(ldb, store, defaultCacheSize, defaultFlushSecs) // 100m, 300s
 	pdb := &db{store: store, cache: cache}
 
 	// Perform any reconciliation needed between the block and metadata as
