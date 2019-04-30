@@ -217,9 +217,10 @@ func serializeBlockLoc(loc blockLocation) []byte {
 }
 
 // blockFilePath return the file path for the provided block file number.
+// 返回对应的块文件路径 ~/.dcrd/data/blocks_ffldb/000000000.fdb
 func blockFilePath(dbPath string, fileNum uint32) string {
-	fileName := fmt.Sprintf(blockFilenameTemplate, fileNum)
-	return filepath.Join(dbPath, fileName)
+	fileName := fmt.Sprintf(blockFilenameTemplate, fileNum) // "%09d.fdb", fileNum
+	return filepath.Join(dbPath, fileName)                  // ~/.dcrd/data/blocks_ffldb/%09d.fdb
 }
 
 // openWriteFile returns a file handle for the passed flat file number in
@@ -716,11 +717,12 @@ func (s *blockStore) handleRollback(oldBlockFileNum, oldBlockOffset uint32) {
 // current write cursor which is also stored in the metadata.  Thus, it is used
 // to detect unexpected shutdowns in the middle of writes so the block files
 // can be reconciled.
+// 扫描数据库路径下的块文件，找到最新的块号和块文件的偏移位置
 func scanBlockFiles(dbPath string) (int, uint32) {
 	lastFile := -1
 	fileLen := uint32(0)
 	for i := 0; ; i++ {
-		filePath := blockFilePath(dbPath, uint32(i))
+		filePath := blockFilePath(dbPath, uint32(i)) // ~/.dcrd/data/blocks_ffldb/000000000.fdb
 		st, err := os.Stat(filePath)
 		if err != nil {
 			break
@@ -736,20 +738,21 @@ func scanBlockFiles(dbPath string) (int, uint32) {
 
 // newBlockStore returns a new block store with the current block file number
 // and offset set and all fields initialized.
+// 返回新的块存储，用最新的块号和块文件偏移
 func newBlockStore(basePath string, network wire.CurrencyNet) *blockStore {
 	// Look for the end of the latest block to file to determine what the
 	// write cursor position is from the viewpoing of the block files on
 	// disk.
-	fileNum, fileOff := scanBlockFiles(basePath)
-	if fileNum == -1 {
+	fileNum, fileOff := scanBlockFiles(basePath) // 返回最新的文件号，和文件偏移
+	if fileNum == -1 {                           // 块文件不存在
 		fileNum = 0
 		fileOff = 0
 	}
 
 	store := &blockStore{
-		network:          network,
-		basePath:         basePath,
-		maxBlockFileSize: maxBlockFileSize,
+		network:          network,          // wire.MainNet
+		basePath:         basePath,         // ~/.dcrd/data/blocks_ffldb
+		maxBlockFileSize: maxBlockFileSize, // 512M
 		openBlockFiles:   make(map[uint32]*lockableFile),
 		openBlocksLRU:    list.New(),
 		fileNumToLRUElem: make(map[uint32]*list.Element),
