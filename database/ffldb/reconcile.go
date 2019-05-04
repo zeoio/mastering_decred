@@ -9,12 +9,13 @@ import (
 
 // The serialized write cursor location format is:
 //
-//  [0:4]  Block file (4 bytes)
-//  [4:8]  File offset (4 bytes)
+//  [0:4]  Block file (4 bytes)		块文件
+//  [4:8]  File offset (4 bytes)	文件偏移
 //  [8:12] Castagnoli CRC-32 checksum (4 bytes)
 
 // serializeWriteRow serialize the current block file and offset where new
 // will be written into a format suitable for storage into the metadata.
+// 序列化当前的块文件和文件偏移，并用crc32校验，然后返回
 func serializeWriteRow(curBlockFileNum, curFileOffset uint32) []byte {
 	var serializedRow [12]byte
 	byteOrder.PutUint32(serializedRow[0:4], curBlockFileNum)
@@ -26,8 +27,10 @@ func serializeWriteRow(curBlockFileNum, curFileOffset uint32) []byte {
 
 // deserializeWriteRow deserializes the write cursor location stored in the
 // metadata.  Returns ErrCorruption if the checksum of the entry doesn't match.
+// 解序列化，返回文件号和文件偏移
 func deserializeWriteRow(writeRow []byte) (uint32, uint32, error) {
 	// Ensure the checksum matches.  The checksum is at the end.
+	// 检查checksum是否匹配
 	gotChecksum := crc32.Checksum(writeRow[:8], castagnoli)
 	wantChecksumBytes := writeRow[8:12]
 	wantChecksum := byteOrder.Uint32(wantChecksumBytes)
@@ -38,26 +41,28 @@ func deserializeWriteRow(writeRow []byte) (uint32, uint32, error) {
 		return 0, 0, makeDbErr(database.ErrCorruption, str, nil)
 	}
 
-	fileNum := byteOrder.Uint32(writeRow[0:4])
-	fileOffset := byteOrder.Uint32(writeRow[4:8])
+	fileNum := byteOrder.Uint32(writeRow[0:4])    // 文件号
+	fileOffset := byteOrder.Uint32(writeRow[4:8]) // 文件偏移
 	return fileNum, fileOffset, nil
 }
 
 // reconcileDB reconciles the metadata with the flat block files on disk.  It
 // will also initialize the underlying database if the create flag is set.
+// 处理写游标偏移，使其正确。 如果flag被设置，初始化基本的数据库
 func reconcileDB(pdb *db, create bool) (database.DB, error) {
 	// Perform initial internal bucket and value creation during database
 	// creation.
-	if create {
+	if create { // 创建数据库
 		if err := initDB(pdb.cache.ldb); err != nil {
 			return nil, err
 		}
 	}
 
 	// Load the current write cursor position from the metadata.
+	// 从数据库中加载当前的写游标位置
 	var curFileNum, curOffset uint32
 	err := pdb.View(func(tx database.Tx) error {
-		writeRow := tx.Metadata().Get(writeLocKeyName)
+		writeRow := tx.Metadata().Get(writeLocKeyName) // []byte("ffldb-writeloc")
 		if writeRow == nil {
 			str := "write cursor does not exist"
 			return makeDbErr(database.ErrCorruption, str, nil)
@@ -80,13 +85,13 @@ func reconcileDB(pdb *db, create bool) (database.DB, error) {
 	// to the known good point before the unclean shutdown.
 	wc := pdb.store.writeCursor
 	if wc.curFileNum > curFileNum || (wc.curFileNum == curFileNum &&
-		wc.curOffset > curOffset) {
+		wc.curOffset > curOffset) { // 如果扫描文件得到的游标 > 数据库存储的游标
 
 		log.Info("Detected unclean shutdown - Repairing...")
 		log.Debugf("Metadata claims file %d, offset %d. Block data is "+
 			"at file %d, offset %d", curFileNum, curOffset,
 			wc.curFileNum, wc.curOffset)
-		pdb.store.handleRollback(curFileNum, curOffset)
+		pdb.store.handleRollback(curFileNum, curOffset) // 回滚到数据库存储的游标位置
 		log.Infof("Database sync complete")
 	}
 
@@ -100,12 +105,11 @@ func reconcileDB(pdb *db, create bool) (database.DB, error) {
 	// however, that would need to happen with coordination from a higher
 	// layer since it could invalidate other metadata.
 	if wc.curFileNum < curFileNum || (wc.curFileNum == curFileNum &&
-		wc.curOffset < curOffset) {
+		wc.curOffset < curOffset) { // 如果扫描文件得到的游标 < 数据库存储的游标  ===> 也就是本地块文件有缺失
 
 		str := fmt.Sprintf("metadata claims file %d, offset %d, but "+
 			"block data is at file %d, offset %d", curFileNum,
 			curOffset, wc.curFileNum, wc.curOffset)
-		log.Warnf("***Database corruption detected***: %v", str)
 		return nil, makeDbErr(database.ErrCorruption, str, nil)
 	}
 

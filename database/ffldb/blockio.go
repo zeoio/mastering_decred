@@ -640,6 +640,7 @@ func (s *blockStore) syncBlocks() error {
 //
 // Therefore, any errors are simply logged at a warning level rather than being
 // returned since there is nothing more that could be done about it anyways.
+// 回滚块文件到指定的块文件号和文件偏移
 func (s *blockStore) handleRollback(oldBlockFileNum, oldBlockOffset uint32) {
 	// Grab the write cursor mutex since it is modified throughout this
 	// function.

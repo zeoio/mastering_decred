@@ -558,11 +558,12 @@ var _ database.Bucket = (*bucket)(nil)
 // bucketIndexKey returns the actual key to use for storing and retrieving a
 // child bucket in the bucket index.  This is required because additional
 // information is needed to distinguish nested buckets with the same name.
+// 返回 "bidx" + <parentID> + key
 func bucketIndexKey(parentID [4]byte, key []byte) []byte {
 	// The serialized bucket index key format is:
 	//   <bucketindexprefix><parentbucketid><bucketname>
 	indexKey := make([]byte, len(bucketIndexPrefix)+4+len(key))
-	copy(indexKey, bucketIndexPrefix)
+	copy(indexKey, bucketIndexPrefix) // []byte("bidx")
 	copy(indexKey[len(bucketIndexPrefix):], parentID[:])
 	copy(indexKey[len(bucketIndexPrefix)+4:], key)
 	return indexKey
@@ -571,6 +572,7 @@ func bucketIndexKey(parentID [4]byte, key []byte) []byte {
 // bucketizedKey returns the actual key to use for storing and retrieving a key
 // for the provided bucket ID.  This is required because bucketizing is handled
 // through the use of a unique prefix per bucket.
+// 返回<bucketID> + <key>
 func bucketizedKey(bucketID [4]byte, key []byte) []byte {
 	// The serialized block index key format is:
 	//   <bucketid><key>
@@ -2011,8 +2013,9 @@ func fileExists(name string) bool {
 func initDB(ldb *leveldb.DB) error {
 	// The starting block file write cursor location is file num 0, offset
 	// 0.
+	// 初始的块文件写游标是， 块文件是0，文件偏移是0
 	batch := new(leveldb.Batch)
-	batch.Put(bucketizedKey(metadataBucketID, writeLocKeyName),
+	batch.Put(bucketizedKey(metadataBucketID, writeLocKeyName), // []{0,0,0,0}, []byte("ffldb-writeloc") --> "0000ffldb-writeloc"
 		serializeWriteRow(0, 0))
 
 	// Create block index bucket and set the current bucket id.
@@ -2021,9 +2024,10 @@ func initDB(ldb *leveldb.DB) error {
 	// there is no need to store the bucket index data for the metadata
 	// bucket in the database.  However, the first bucket ID to use does
 	// need to account for it to ensure there are no key collisions.
-	batch.Put(bucketIndexKey(metadataBucketID, blockIdxBucketName),
-		blockIdxBucketID[:])
-	batch.Put(curBucketIDKeyName, blockIdxBucketID[:])
+	// 创建块索引桶，和设置当前的桶id
+	batch.Put(bucketIndexKey(metadataBucketID, blockIdxBucketName), // []{0,0,0,0}, []byte("ffldb-blockidx") --> "bidx0000ffldb-blockidx"
+		blockIdxBucketID[:]) // [4]byte{0x00, 0x00, 0x00, 0x01}
+	batch.Put(curBucketIDKeyName, blockIdxBucketID[:]) // []byte("bidx-cbid")
 
 	// Write everything as a single batch.
 	if err := ldb.Write(batch, nil); err != nil {

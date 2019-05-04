@@ -49,6 +49,7 @@ func dcrdMain() error {
 	}
 
 	// Load the block database.
+	// 加载块数据库
 	db, err := loadBlockDB()
 	if err != nil {
 		dcrdLog.Errorf("%v", err)

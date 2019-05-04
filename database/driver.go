@@ -60,7 +60,9 @@ func SupportedDrivers() []string {
 // for the database driver for further details.
 //
 // ErrDbUnknownType will be returned if the the database type is not registered.
+// 创建指定类型的数据库
 func Create(dbType string, args ...interface{}) (DB, error) {
+	// 查找指定类型的数据库
 	drv, exists := drivers[dbType]
 	if !exists {
 		str := fmt.Sprintf("driver %q is not registered", dbType)

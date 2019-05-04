@@ -2419,6 +2419,7 @@ func blockDbPath(dbType string) string {
 // contains additional logic such warning the user if there are multiple
 // databases which consume space on the file system and ensuring the regression
 // test database is clean when in regression test mode.
+// 加载块数据库，当不存在时，创建一个
 func loadBlockDB() (database.DB, error) {
 	// The database name is based on the database type.
 	dbPath := blockDbPath(cfg.DbType) // ~/.dcrd/data/blocks_ffldb
@@ -2429,13 +2430,13 @@ func loadBlockDB() (database.DB, error) {
 		// Return the error if it's not because the database doesn't
 		// exist.
 		if dbErr, ok := err.(database.Error); !ok || dbErr.ErrorCode !=
-			database.ErrDbDoesNotExist {
-
+			database.ErrDbDoesNotExist { // 不是数据库不存在错误
 			return nil, err
 		}
 
 		// Create the db if it does not exist.
-		err = os.MkdirAll(cfg.DataDir, 0700)
+		// 当数据库不存在时
+		err = os.MkdirAll(cfg.DataDir, 0700) // ~/.dcrd/data
 		if err != nil {
 			return nil, err
 		}

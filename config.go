@@ -379,7 +379,7 @@ func loadConfig() (*config, []string, error) {
 		RPCMaxClients:        defaultMaxRPCClients,
 		RPCMaxWebsockets:     defaultMaxRPCWebsockets,
 		RPCMaxConcurrentReqs: defaultMaxRPCConcurrentReqs, // 20
-		DataDir:              defaultDataDir,
+		DataDir:              defaultDataDir,              // ~/.dcrd/data
 		LogDir:               defaultLogDir,
 		DbType:               defaultDbType, // "ffldb"
 		RPCKey:               defaultRPCKeyFile,
