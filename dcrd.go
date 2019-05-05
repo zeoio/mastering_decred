@@ -68,7 +68,7 @@ func dcrdMain() error {
 	// Create server and start it.
 	// 创建server
 	server, err := newServer(cfg.Listeners, db, activeNetParams.Params, // ":9108"
-		cfg.DataDir, ctx.Done()) // ~/.dcrd/data
+		cfg.DataDir, ctx.Done()) // ~/.dcrd/data/mainnet
 	if err != nil {
 		dcrdLog.Errorf("Unable to start server on %v: %v", cfg.Listeners, err)
 		return err
