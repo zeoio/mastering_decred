@@ -34,9 +34,9 @@ type AddrManager struct {
 	rand           *rand.Rand                               // internal PRNG
 	key            [32]byte                                 // cryptographically secure random bytes
 	addrIndex      map[string]*KnownAddress                 // address key to ka for all addresses
-	addrNew        [newBucketCount]map[string]*KnownAddress // storage for new addresses
-	addrTried      [triedBucketCount]*list.List             // storage for tried addresses
-	addrChanged    bool                                     // true if address state needs saving
+	addrNew        [newBucketCount]map[string]*KnownAddress // storage for new addresses	-> [1024]map[string]*KnownAddress
+	addrTried      [triedBucketCount]*list.List             // storage for tried addresses	-> [64]*list.List
+	addrChanged    bool                                     // true if address state needs saving	-> 地址状态需要保持
 	started        int32                                    // is 1 if started
 	shutdown       int32                                    // is 1 if shutdown is done or in progress
 	wg             sync.WaitGroup                           // wait group used by main handler
@@ -692,19 +692,21 @@ func (a *AddrManager) AddressCache() []*wire.NetAddress {
 
 // reset resets the address manager by reinitialising the random source
 // and allocating fresh empty bucket storage.
+// 重新用随机数填充a.key，和重新分配某些字段
 func (a *AddrManager) reset() {
-
 	a.addrIndex = make(map[string]*KnownAddress)
 
 	// fill key with bytes from a good random source.
-	io.ReadFull(crand.Reader, a.key[:])
-	for i := range a.addrNew {
+	io.ReadFull(crand.Reader, a.key[:]) // 用随机数填充key
+	// 初始化addrNew
+	for i := range a.addrNew { // [1024]map[string]*KnownAddress
 		a.addrNew[i] = make(map[string]*KnownAddress)
 	}
-	for i := range a.addrTried {
+	// 初始化addrTried
+	for i := range a.addrTried { // [64]*list.List
 		a.addrTried[i] = list.New()
 	}
-	a.addrChanged = true
+	a.addrChanged = true // 地址状态需要保持
 }
 
 // HostToNetAddress returns a netaddress given a host address. If the address is
@@ -1133,13 +1135,15 @@ func (a *AddrManager) GetBestLocalAddress(remoteAddr *wire.NetAddress) *wire.Net
 // Use Start to begin processing asynchronous address updates.
 // The address manager uses lookupFunc for necessary DNS lookups.
 func New(dataDir string, lookupFunc func(string) ([]net.IP, error)) *AddrManager {
+	// 新建一个地址管理者AddrManager
 	am := AddrManager{
-		peersFile:      filepath.Join(dataDir, PeersFilename),
-		lookupFunc:     lookupFunc,
+		peersFile:      filepath.Join(dataDir, PeersFilename), // ~/.dcrd/data/mainnet/peers.json
+		lookupFunc:     lookupFunc,                            // net.LookupIP()
 		rand:           rand.New(rand.NewSource(time.Now().UnixNano())),
 		quit:           make(chan struct{}),
 		localAddresses: make(map[string]*localAddress),
 	}
+
 	am.reset()
 	return &am
 }

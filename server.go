@@ -40,7 +40,7 @@ import (
 const (
 	// defaultServices describes the default services that are supported by
 	// the server.
-	defaultServices = wire.SFNodeNetwork | wire.SFNodeCF
+	defaultServices = wire.SFNodeNetwork | wire.SFNodeCF // 全节点，支持committed过滤
 
 	// defaultRequiredServices describes the default services that are
 	// required to be supported by outbound peers.
@@ -2311,23 +2311,24 @@ func standardScriptVerifyFlags(chain *blockchain.BlockChain) (txscript.ScriptFla
 // Decred network type specified by chainParams.  Use start to begin accepting
 // connections from peers.
 func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Params, dataDir string, interrupt <-chan struct{}) (*server, error) {
-	services := defaultServices
-	if cfg.NoCFilters {
+	services := defaultServices // wire.SFNodeNetwork | wire.SFNodeCF -> 全节点，支持committed过滤
+	if cfg.NoCFilters {         // false
 		services &^= wire.SFNodeCF
 	}
 
-	amgr := addrmgr.New(cfg.DataDir, dcrdLookup)
+	// 新建一个地址管理者
+	amgr := addrmgr.New(cfg.DataDir, dcrdLookup) // ~/.dcrd/data/mainnet, net.LookupIP()
 
 	var listeners []net.Listener
 	var nat NAT
-	if !cfg.DisableListen {
-		ipv4Addrs, ipv6Addrs, wildcard, err :=
-			parseListeners(listenAddrs)
+	if !cfg.DisableListen { // !false
+		ipv4Addrs, ipv6Addrs, wildcard, err := parseListeners(listenAddrs)
 		if err != nil {
 			return nil, err
 		}
 		listeners = make([]net.Listener, 0, len(ipv4Addrs)+len(ipv6Addrs))
 		discover := true
+
 		if len(cfg.ExternalIPs) != 0 {
 			discover = false
 			// if this fails we have real issues.

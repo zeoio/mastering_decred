@@ -2043,7 +2043,7 @@ func initDB(ldb *leveldb.DB) error {
 // is returned if the database doesn't exist and the create flag is not set.
 func openDB(dbPath string, network wire.CurrencyNet, create bool) (database.DB, error) {
 	// Error if the database doesn't exist and the create flag is not set.
-	metadataDbPath := filepath.Join(dbPath, metadataDbName) // ~/.dcrd/data/blocks_ffldb/metadata
+	metadataDbPath := filepath.Join(dbPath, metadataDbName) // ~/.dcrd/data/mainnet/blocks_ffldb/metadata
 	dbExists := fileExists(metadataDbPath)
 	if !create && !dbExists { // 当需要打开数据库时，但是数据库不存在
 		str := fmt.Sprintf("database %q does not exist", metadataDbPath)

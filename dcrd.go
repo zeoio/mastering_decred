@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/decred/dcrd/blockchain/indexers"
 	"github.com/decred/dcrd/internal/limits"
 )
 
@@ -66,55 +65,15 @@ func dcrdMain() error {
 		return nil
 	}
 
-	// Drop indexes and exit if requested.
-	//
-	// NOTE: The order is important here because dropping the tx index also
-	// drops the address index since it relies on it.
-	if cfg.DropAddrIndex {
-		if err := indexers.DropAddrIndex(db, ctx.Done()); err != nil {
-			dcrdLog.Errorf("%v", err)
-			return err
-		}
-
-		return nil
-	}
-	if cfg.DropTxIndex {
-		if err := indexers.DropTxIndex(db, ctx.Done()); err != nil {
-			dcrdLog.Errorf("%v", err)
-			return err
-		}
-
-		return nil
-	}
-	if cfg.DropExistsAddrIndex {
-		if err := indexers.DropExistsAddrIndex(db, ctx.Done()); err != nil {
-			dcrdLog.Errorf("%v", err)
-			return err
-		}
-
-		return nil
-	}
-	if cfg.DropCFIndex {
-		if err := indexers.DropCfIndex(db, ctx.Done()); err != nil {
-			dcrdLog.Errorf("%v", err)
-			return err
-		}
-
-		return nil
-	}
-
 	// Create server and start it.
-	lifetimeNotifier.notifyStartupEvent(lifetimeEventP2PServer)
-	server, err := newServer(cfg.Listeners, db, activeNetParams.Params,
-		cfg.DataDir, ctx.Done())
+	// 创建server
+	server, err := newServer(cfg.Listeners, db, activeNetParams.Params, // ":9108"
+		cfg.DataDir, ctx.Done()) // ~/.dcrd/data
 	if err != nil {
-		// TODO(oga) this logging could do with some beautifying.
-		dcrdLog.Errorf("Unable to start server on %v: %v",
-			cfg.Listeners, err)
+		dcrdLog.Errorf("Unable to start server on %v: %v", cfg.Listeners, err)
 		return err
 	}
 	defer func() {
-		lifetimeNotifier.notifyShutdownEvent(lifetimeEventP2PServer)
 		dcrdLog.Infof("Gracefully shutting down the server...")
 		server.Stop()
 		server.WaitForShutdown()
@@ -126,8 +85,6 @@ func dcrdMain() error {
 	if shutdownRequested(ctx) {
 		return nil
 	}
-
-	lifetimeNotifier.notifyStartupComplete()
 
 	// Signal the Windows service (if running) that startup has completed.
 	serviceStartOfDayChan <- cfg

@@ -2410,7 +2410,7 @@ func newBlockManager(s *server, indexManager blockchain.IndexManager, interrupt 
 func blockDbPath(dbType string) string {
 	// The database name is based on the database type.
 	dbName := blockDbNamePrefix + "_" + dbType   // blocks_ffldb
-	dbPath := filepath.Join(cfg.DataDir, dbName) // ~/.dcrd/data/blocks_ffldb
+	dbPath := filepath.Join(cfg.DataDir, dbName) // ~/.dcrd/data/mainnet/blocks_ffldb
 	return dbPath
 }
 
@@ -2422,7 +2422,7 @@ func blockDbPath(dbType string) string {
 // 加载块数据库，当不存在时，创建一个
 func loadBlockDB() (database.DB, error) {
 	// The database name is based on the database type.
-	dbPath := blockDbPath(cfg.DbType) // ~/.dcrd/data/blocks_ffldb
+	dbPath := blockDbPath(cfg.DbType) // ~/.dcrd/data/mainnet/blocks_ffldb
 
 	dcrdLog.Infof("Loading block database from '%s'", dbPath)
 	db, err := database.Open(cfg.DbType, dbPath, activeNetParams.Net)
@@ -2436,7 +2436,7 @@ func loadBlockDB() (database.DB, error) {
 
 		// Create the db if it does not exist.
 		// 当数据库不存在时
-		err = os.MkdirAll(cfg.DataDir, 0700) // ~/.dcrd/data
+		err = os.MkdirAll(cfg.DataDir, 0700) // ~/.dcrd/data/mainnet
 		if err != nil {
 			return nil, err
 		}

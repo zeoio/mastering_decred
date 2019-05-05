@@ -309,8 +309,7 @@ func createDefaultConfigFile(destPath string) error {
 	s = rpcPassRE.ReplaceAllString(s, rpcPassLine)
 
 	// Create config file at the provided path.
-	dest, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC,
-		0600)
+	dest, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -370,7 +369,7 @@ func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
 		HomeDir:              defaultHomeDir,
-		ConfigFile:           defaultConfigFile,
+		ConfigFile:           defaultConfigFile, // ~/.dcrd/dcrd.conf
 		DebugLevel:           defaultLogLevel,
 		MaxSameIP:            defaultMaxSameIP,
 		MaxPeers:             defaultMaxPeers,
@@ -397,7 +396,7 @@ func loadConfig() (*config, []string, error) {
 		AddrIndex:            defaultAddrIndex,
 		AllowOldVotes:        defaultAllowOldVotes,
 		NoExistsAddrIndex:    defaultNoExistsAddrIndex,
-		NoCFilters:           defaultNoCFilters,
+		NoCFilters:           defaultNoCFilters, // false
 		AltDNSNames:          defaultAltDNSNames,
 		ipv4NetInfo:          dcrjson.NetworksResult{Name: "IPV4"},
 		ipv6NetInfo:          dcrjson.NetworksResult{Name: "IPV6"},
@@ -426,17 +425,6 @@ func loadConfig() (*config, []string, error) {
 	// Show the version and exit if the version flag was specified.
 	appName := filepath.Base(os.Args[0])
 	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-
-	// Perform service command and exit if specified.  Invalid service
-	// commands show an appropriate error.  Only runs on Windows since
-	// the runServiceCommand function will be nil when not on Windows.
-	if serviceOpts.ServiceCommand != "" && runServiceCommand != nil {
-		err := runServiceCommand(serviceOpts.ServiceCommand)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-		os.Exit(0)
-	}
 
 	// Create a default config file when one does not exist and the user did
 	// not specify an override.
@@ -502,7 +490,7 @@ func loadConfig() (*config, []string, error) {
 	// network specific DataDir will be used after this.
 	// 设置主网的数据目录
 	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
-	cfg.DataDir = filepath.Join(cfg.DataDir, activeNetParams.Name)
+	cfg.DataDir = filepath.Join(cfg.DataDir, activeNetParams.Name) // ~/.dcrd/data/mainnet
 
 	// Validate database type.
 	// 检查数据库的类型是否支持
@@ -526,7 +514,7 @@ func loadConfig() (*config, []string, error) {
 	// 如果没有指定监听者，则添加默认的监听者
 	if len(cfg.Listeners) == 0 {
 		cfg.Listeners = []string{
-			net.JoinHostPort("", activeNetParams.DefaultPort), // 默认端口9108
+			net.JoinHostPort("", activeNetParams.DefaultPort), // ":9108"
 		}
 	}
 
@@ -694,8 +682,5 @@ func dcrdDial(network, addr string) (net.Conn, error) {
 // resolved using tor if a proxy was specified unless --noonion was also
 // specified in which case the normal system DNS resolver will be used.
 func dcrdLookup(host string) ([]net.IP, error) {
-	if strings.HasSuffix(host, ".onion") {
-		return cfg.onionlookup(host)
-	}
 	return cfg.lookup(host)
 }

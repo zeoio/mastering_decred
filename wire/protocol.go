@@ -41,14 +41,17 @@ type ServiceFlag uint64
 
 const (
 	// SFNodeNetwork is a flag used to indicate a peer is a full node.
+	// 全节点标记
 	SFNodeNetwork ServiceFlag = 1 << iota
 
 	// SFNodeBloom is a flag used to indiciate a peer supports bloom
 	// filtering.
+	// 支持bloom过滤
 	SFNodeBloom
 
 	// SFNodeCF is a flag used to indicate a peer supports committed
 	// filters (CFs).
+	// 支持committed过滤
 	SFNodeCF
 )
 
