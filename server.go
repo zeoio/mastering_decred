@@ -2448,9 +2448,9 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s := server{
-		chainParams:          chainParams,
+		chainParams:          chainParams, // activeNetParams.Params
 		addrManager:          amgr,
-		newPeers:             make(chan *serverPeer, cfg.MaxPeers),
+		newPeers:             make(chan *serverPeer, cfg.MaxPeers), // 125
 		donePeers:            make(chan *serverPeer, cfg.MaxPeers),
 		banPeers:             make(chan *serverPeer, cfg.MaxPeers),
 		query:                make(chan interface{}),
@@ -2462,8 +2462,8 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		nat:                  nat,
 		db:                   db,
 		timeSource:           blockchain.NewMedianTime(),
-		services:             services,
-		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),
+		services:             services,                                  // wire.SFNodeNetwork | wire.SFNodeCF -> 全节点，支持committed过滤
+		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize), // 100000
 		context:              ctx,
 		cancel:               cancel,
 	}

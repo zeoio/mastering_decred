@@ -1,8 +1,3 @@
-// Copyright (c) 2013-2014 The btcsuite developers
-// Copyright (c) 2015-2016 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package blockchain
 
 import (
@@ -211,9 +206,10 @@ func (m *medianTime) Offset() time.Duration {
 // rules necessary for proper time handling in the chain consensus rules and
 // expects the time samples to be added from the timestamp field of the version
 // message received from remote peers that successfully connect and negotiate.
+// 新建一个中位数时间结构。为了共识算法恰当的时间源
 func NewMedianTime() MedianTimeSource {
 	return &medianTime{
 		knownIDs: make(map[string]struct{}),
-		offsets:  make([]int64, 0, maxMedianTimeEntries),
+		offsets:  make([]int64, 0, maxMedianTimeEntries), // 200
 	}
 }

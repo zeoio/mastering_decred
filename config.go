@@ -372,7 +372,7 @@ func loadConfig() (*config, []string, error) {
 		ConfigFile:           defaultConfigFile, // ~/.dcrd/dcrd.conf
 		DebugLevel:           defaultLogLevel,
 		MaxSameIP:            defaultMaxSameIP,
-		MaxPeers:             defaultMaxPeers,
+		MaxPeers:             defaultMaxPeers, // 125
 		BanDuration:          defaultBanDuration,
 		BanThreshold:         defaultBanThreshold,
 		RPCMaxClients:        defaultMaxRPCClients,
@@ -389,7 +389,7 @@ func loadConfig() (*config, []string, error) {
 		BlockMaxSize:         defaultBlockMaxSize,              // 375000
 		BlockPrioritySize:    mempool.DefaultBlockPrioritySize, // 20000
 		MaxOrphanTxs:         defaultMaxOrphanTransactions,     // 1000
-		SigCacheMaxSize:      defaultSigCacheMaxSize,
+		SigCacheMaxSize:      defaultSigCacheMaxSize,           // 100000
 		Generate:             defaultGenerate,
 		NoMiningStateSync:    defaultNoMiningStateSync,
 		TxIndex:              defaultTxIndex,

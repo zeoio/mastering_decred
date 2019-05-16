@@ -1,8 +1,3 @@
-// Copyright (c) 2015-2016 The btcsuite developers
-// Copyright (c) 2016 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package txscript
 
 import (
@@ -45,9 +40,10 @@ type SigCache struct {
 // exist in the SigCache at any particular moment. Random entries are evicted
 // to make room for new entries that would cause the number of entries in the
 // cache to exceed the max.
+// 创建和初始化一个新的签名缓存
 func NewSigCache(maxEntries uint) *SigCache {
 	return &SigCache{
-		validSigs:  make(map[chainhash.Hash]sigCacheEntry, maxEntries),
+		validSigs:  make(map[chainhash.Hash]sigCacheEntry, maxEntries), // 100000
 		maxEntries: maxEntries,
 	}
 }
