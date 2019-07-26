@@ -1,9 +1,3 @@
-// Copyright (c) 2017 The btcsuite developers
-// Copyright (c) 2017 The Lightning Network Developers
-// Copyright (c) 2018 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 /*
 Package blockcf provides functions for building committed filters for blocks
 using Golomb-coded sets in a way that is useful for light clients such as SPV
